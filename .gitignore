@@ -39,3 +39,6 @@ Thumbs.db
 
 # Word temp files
 ~$*.docx
+
+# Test folders
+**/test_*/
