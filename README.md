@@ -12,10 +12,10 @@
 
 | STT | Họ và Tên | MSSV | Vai trò chính |
 |:---:|:---|:---:|:---|
-| 1 | **Thành viên 1 (Leader)** | `MSSV_1` | Quản lý dự án, Network Infrastructure Lead |
-| 2 | **Thành viên 2** | `MSSV_2` | Compute & Security Lead (Terraform) |
-| 3 | **Thành viên 3** | `MSSV_3` | AWS CloudFormation Lead |
-| 4 | **Thành viên 4** | `MSSV_4` | QA, Test Automation & Technical Documentation |
+| 1 | **Võ Duy Hiếu (Leader)** | `23520498` | Quản lý dự án, Network Infrastructure Lead |
+| 2 | **Cam Hồng Mạnh** | `23520914` | Compute & Security Lead (Terraform) |
+| 3 | **Lê Đoàn Phúc Thanh** | `24520030` | AWS CloudFormation Lead |
+| 4 | **Hoàng Lê Nhật Minh** | `23520926` | QA, Test Automation & Technical Documentation |
 
 ---
 

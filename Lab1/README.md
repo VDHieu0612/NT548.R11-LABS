@@ -9,10 +9,10 @@
 
 | STT | Họ và Tên | MSSV | Vai trò chính | Nhiệm vụ đảm nhiệm | Tự đánh giá |
 |:---:|:---|:---:|:---|:---|:---:|
-| 1 | **Thành viên 1 (Leader)** | `MSSV_1` | **Network IaC Lead (Terraform)** | - Quản lý repo, kiến trúc tổng thể hạ tầng<br>- Viết Module Terraform `vpc` (VPC, Public/Private Subnets, IGW, Default SG)<br>- Viết Module Terraform `nat` (EIP, NAT Gateway, Public/Private Route Tables)<br>- Review & Merge Pull Requests | 100% |
-| 2 | **Thành viên 2** | `MSSV_2` | **Compute & Security IaC (Terraform)** | - Viết Module Terraform `security` (Public/Private Security Groups)<br>- Viết Module Terraform `ec2` (Bastion Host, Private EC2, Key Pair)<br>- Tích hợp Root Terraform (`main.tf`, `variables.tf`, `outputs.tf`)<br>- Thực hiện kiểm thử hạ tầng Terraform | 100% |
-| 3 | **Thành viên 3** | `MSSV_3` | **CloudFormation Lead** | - Triển khai hạ tầng tương đương bằng AWS CloudFormation<br>- Viết `01-vpc-network.yaml` (VPC, Subnets, IGW, NAT GW, Route Tables)<br>- Viết `02-security-groups.yaml` (Security Groups)<br>- Viết `03-ec2-instances.yaml` (Public/Private EC2, KeyPair)<br>- Hướng dẫn triển khai CloudFormation CLI / Console | 100% |
-| 4 | **Thành viên 4** | `MSSV_4` | **QA, Test Automation & Report Lead** | - Viết kịch bản kiểm thử (Test Cases Matrix)<br>- Viết script tự động kiểm thử kết nối (`scripts/test_connectivity.sh`)<br>- Thu thập log, chụp ảnh minh chứng hoạt động của hệ thống<br>- Soạn thảo Báo cáo thực hành file Word theo đúng biểu mẫu UIT | 100% |
+| 1 | **Võ Duy Hiếu (Leader)** | `23520498` | **Network IaC Lead (Terraform)** | - Quản lý repo, kiến trúc tổng thể hạ tầng<br>- Viết Module Terraform `vpc` (VPC, Public/Private Subnets, IGW, Default SG)<br>- Viết Module Terraform `nat` (EIP, NAT Gateway, Public/Private Route Tables)<br>- Review & Merge Pull Requests | 100% |
+| 2 | **Cam Hồng Mạnh** | `23520914` | **Compute & Security IaC (Terraform)** | - Viết Module Terraform `security` (Public/Private Security Groups)<br>- Viết Module Terraform `ec2` (Bastion Host, Private EC2, Key Pair)<br>- Tích hợp Root Terraform (`main.tf`, `variables.tf`, `outputs.tf`)<br>- Thực hiện kiểm thử hạ tầng Terraform | 100% |
+| 3 | **Lê Đoàn Phúc Thanh** | `24520030` | **CloudFormation Lead** | - Triển khai hạ tầng tương đương bằng AWS CloudFormation<br>- Viết `01-vpc-network.yaml` (VPC, Subnets, IGW, NAT GW, Route Tables)<br>- Viết `02-security-groups.yaml` (Security Groups)<br>- Viết `03-ec2-instances.yaml` (Public/Private EC2, KeyPair)<br>- Hướng dẫn triển khai CloudFormation CLI / Console | 100% |
+| 4 | **Hoàng Lê Nhật Minh** | `23520926` | **QA, Test Automation & Report Lead** | - Viết kịch bản kiểm thử (Test Cases Matrix)<br>- Viết script tự động kiểm thử kết nối (`scripts/test_connectivity.sh`)<br>- Thu thập log, chụp ảnh minh chứng hoạt động của hệ thống<br>- Soạn thảo Báo cáo thực hành file Word theo đúng biểu mẫu UIT | 100% |
 
 ---
 
@@ -90,7 +90,7 @@ Phần này giúp từng thành viên hình dung rõ cấu trúc, mục đích c
 
 ### 1. Phân hệ Terraform Modules & Dev Root
 
-#### 🔹 `terraform/modules/vpc/` (Thành viên 1 phụ trách)
+#### 🔹 `terraform/modules/vpc/` (Võ Duy Hiếu phụ trách)
 - `main.tf`: Khai báo các tài nguyên mạng cơ bản:
   - `aws_vpc`: Khởi tạo VPC với CIDR block (mặc định `10.0.0.0/16`), bật `enable_dns_support` và `enable_dns_hostnames`.
   - `aws_internet_gateway`: Tạo IGW và gắn vào VPC.
@@ -100,7 +100,7 @@ Phần này giúp từng thành viên hình dung rõ cấu trúc, mục đích c
 - `variables.tf`: Khai báo các input variables: `vpc_cidr`, `public_subnet_cidr`, `private_subnet_cidr`, `availability_zone`, `project_name`.
 - `outputs.tf`: Xuất các giá trị cần cho các module khác: `vpc_id`, `public_subnet_id`, `private_subnet_id`, `internet_gateway_id`, `default_security_group_id`.
 
-#### 🔹 `terraform/modules/nat/` (Thành viên 1 phụ trách)
+#### 🔹 `terraform/modules/nat/` (Võ Duy Hiếu phụ trách)
 - `main.tf`: Khai báo NAT và bảng định tuyến (Route Tables):
   - `aws_eip`: Cấp phát 1 Elastic IP cho NAT Gateway.
   - `aws_nat_gateway`: Tạo NAT Gateway đặt tại **Public Subnet** và gắn Elastic IP trên.
@@ -111,14 +111,14 @@ Phần này giúp từng thành viên hình dung rõ cấu trúc, mục đích c
 - `variables.tf`: Nhận các biến từ module VPC: `vpc_id`, `public_subnet_id`, `private_subnet_id`, `internet_gateway_id`.
 - `outputs.tf`: Xuất `nat_gateway_id`, `nat_eip`, `public_route_table_id`, `private_route_table_id`.
 
-#### 🔹 `terraform/modules/security/` (Thành viên 2 phụ trách)
+#### 🔹 `terraform/modules/security/` (Cam Hồng Mạnh phụ trách)
 - `main.tf`: Khai báo các nhóm bảo mật (Security Groups):
   - `aws_security_group.public_ec2_sg`: Chỉ cho phép Ingress SSH (port 22) từ IP cụ thể của bạn (`var.allowed_ssh_ip`). Egress mở cho mọi luồng.
   - `aws_security_group.private_ec2_sg`: Ingress SSH (port 22) và Ping (ICMP) **chỉ cho phép nguồn từ Public Security Group** (`security_groups = [aws_security_group.public_ec2_sg.id]`). Egress mở ra ngoài để qua NAT GW.
 - `variables.tf`: Nhận `vpc_id` và `allowed_ssh_ip`.
 - `outputs.tf`: Xuất `public_security_group_id` và `private_security_group_id`.
 
-#### 🔹 `terraform/modules/ec2/` (Thành viên 2 phụ trách)
+#### 🔹 `terraform/modules/ec2/` (Cam Hồng Mạnh phụ trách)
 - `main.tf`: Khai báo máy ảo:
   - `data "aws_ami"`: Lấy AMI Amazon Linux 2023 mới nhất.
   - `aws_instance.public_ec2`: Máy Bastion đặt tại Public Subnet, gắn Public SG, có Public IP (`associate_public_ip_address = true`), gắn SSH Key Pair.
@@ -126,7 +126,7 @@ Phần này giúp từng thành viên hình dung rõ cấu trúc, mục đích c
 - `variables.tf`: Nhận `public_subnet_id`, `private_subnet_id`, `public_security_group_id`, `private_security_group_id`, `key_name`, `instance_type`.
 - `outputs.tf`: Xuất `public_ec2_ip` và `private_ec2_internal_ip`.
 
-#### 🔹 `terraform/environments/dev/` (Thành viên 2 phụ trách ghép nối)
+#### 🔹 `terraform/environments/dev/` (Cam Hồng Mạnh phụ trách ghép nối)
 - `providers.tf`: Cấu hình provider AWS, phiên bản Terraform và Region.
 - `variables.tf`: Khai báo các tham số đầu vào cho môi trường Dev (`aws_region`, `allowed_ssh_ip`, `key_name`, v.v.).
 - `terraform.tfvars.example`: Mẫu giá trị truyền vào (IP cá nhân, tên key `vockey`) để người dùng tạo file `terraform.tfvars`.
@@ -135,7 +135,7 @@ Phần này giúp từng thành viên hình dung rõ cấu trúc, mục đích c
 
 ---
 
-### 2. Phân hệ CloudFormation (Thành viên 3 phụ trách)
+### 2. Phân hệ CloudFormation (Lê Đoàn Phúc Thanh phụ trách)
 
 - `cloudformation/01-vpc-network.yaml`:
   - Viết template tạo VPC, Public Subnet, Private Subnet, IGW, EIP, NAT Gateway, 2 Route Tables và Associations.
@@ -151,7 +151,7 @@ Phần này giúp từng thành viên hình dung rõ cấu trúc, mục đích c
 
 ---
 
-### 3. Phân hệ Scripts & Automation (Thành viên 4 phụ trách)
+### 3. Phân hệ Scripts & Automation (Hoàng Lê Nhật Minh phụ trách)
 
 - `scripts/test_connectivity.sh`:
   - Viết Bash script tự động nhận 3 tham số: `<path_key.pem> <PUBLIC_IP> <PRIVATE_IP>`.
