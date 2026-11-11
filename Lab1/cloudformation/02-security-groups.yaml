@@ -1,0 +1,76 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Template tạo Security Groups (Public và Private)
+
+Parameters:
+  NetworkStackName:
+    Type: String
+    Default: my-vpc
+    Description: Tên stack 1 (01-vpc-network.yaml) để lấy VpcId
+  MyIp:
+    Type: String
+    Description: IP public theo dạng CIDR
+
+Resources:
+  # ---------------------------------------------------------------------------
+  # Public Security Group: chỉ cho SSH port 22 từ MyIp
+  # ---------------------------------------------------------------------------
+  PublicSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Public EC2 - SSH từ MyIp
+      VpcId:
+        Fn::ImportValue: !Sub "${NetworkStackName}-VpcId"
+      SecurityGroupIngress:
+        - Description: SSH từ MyIp
+          IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: !Ref MyIp
+      SecurityGroupEgress:
+        - Description: Egress mở mọi luồng
+          IpProtocol: "-1"
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-public-sg"
+
+  # ---------------------------------------------------------------------------
+  # Private Security Group: chỉ cho SSH port 22 từ Public SG
+  # ---------------------------------------------------------------------------
+  PrivateSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Private EC2 - SSH and ICMP từ Public Security Group
+      VpcId:
+        Fn::ImportValue: !Sub "${NetworkStackName}-VpcId"
+      SecurityGroupIngress:
+        - Description: SSH từ Public Security Group
+          IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          SourceSecurityGroupId: !Ref PublicSecurityGroup
+        - Description: Ping (ICMP) từ Public Security Group
+          IpProtocol: icmp
+          FromPort: -1
+          ToPort: -1
+          SourceSecurityGroupId: !Ref PublicSecurityGroup
+      SecurityGroupEgress:
+        - Description: Mở mọi nguồn 
+          IpProtocol: "-1"
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-private-sg"
+
+Outputs:
+  PublicSecurityGroupId:
+    Description: ID của Public Security Group 
+    Value: !Ref PublicSecurityGroup
+    Export:
+      Name: !Sub "${AWS::StackName}-PublicSecurityGroupId"
+
+  PrivateSecurityGroupId:
+    Description: ID của Private Security Group 
+    Value: !Ref PrivateSecurityGroup
+    Export:
+      Name: !Sub "${AWS::StackName}-PrivateSecurityGroupId"
