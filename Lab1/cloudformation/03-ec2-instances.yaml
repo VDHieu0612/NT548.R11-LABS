@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: Template tạo 2 EC2 Instances: Private và Public
+Description: Template tạo 2 EC2 Instances Private và Public
 
 Parameters:
   NetworkStackName:
