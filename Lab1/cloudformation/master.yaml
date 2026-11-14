@@ -1,24 +1,24 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Description: >
-  Master template điều phối 3 nested stacks theo thứ tự:
+  Master template dieu phoi 3 nested stacks theo thu tu:
   Network (01-vpc-network.yaml) -> Security (02-security-groups.yaml) -> EC2 (03-ec2-instances.yaml).
-  3 template con phải được upload lên S3 trước khi deploy.
+  3 template con phai duoc upload len S3 truoc khi deploy.
 
 Parameters:
-  # --- Nơi chứa 3 template con ---
+  # --- Noi chua 3 template con ---
   TemplatesBucketName:
     Type: String
-    Description: Tên S3 bucket cùng region chứa upload 3 template con
+    Description: Ten S3 bucket cung region chua upload 3 template con
   TemplatesPrefix:
     Type: String
     Default: cfn
-    Description: Thư mục (prefix) trong bucket chứa 3 template con
+    Description: Thu muc (prefix) trong bucket chua 3 template con
 
   # --- Network ---
   ProjectName:
     Type: String
     Default: my-project
-    Description: Tiền tố đặt tên cho các resource
+    Description: Tien to dat ten cho cac resource
   VpcCidr:
     Type: String
     Default: 10.0.0.0/16
@@ -31,20 +31,20 @@ Parameters:
   AvailabilityZone:
     Type: String
     Default: ""
-    Description: AZ cho 2 subnet. Để trống sẽ dùng AZ đầu tiên của region
+    Description: AZ cho 2 subnet. De trong se dung AZ dau tien cua region
 
   # --- Security ---
   MyIp:
     Type: String
-    Description: IP public của bạn theo dạng CIDR
+    Description: IP public cua ban theo dang CIDR
   # --- EC2 ---
   KeyName:
     Type: AWS::EC2::KeyPair::KeyName
-    Description: Tên SSH Key Pair 
+    Description: Ten SSH Key Pair 
   InstanceType:
     Type: String
     Default: t3.micro
-    Description: Loại instance. processor
+    Description: Loai instance. processor
 
 Resources:
   # ---------------------------------------------------------------------------
@@ -53,7 +53,7 @@ Resources:
   NetworkStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub "https://${TemplatesBucketName}.s3.${AWS::Region}.amazonaws.com/${TemplatesPrefix}/vpc-network.yaml"
+      TemplateURL: !Sub "https://${TemplatesBucketName}.s3.${AWS::Region}.amazonaws.com/${TemplatesPrefix}/01-vpc-network.yaml"
       Parameters:
         ProjectName: !Ref ProjectName
         VpcCidr: !Ref VpcCidr
@@ -62,25 +62,25 @@ Resources:
         AvailabilityZone: !Ref AvailabilityZone
 
   # ---------------------------------------------------------------------------
-  # 2. Security: Public SG + Private SG (ImportValue VpcId từ NetworkStack)
-  #    !Ref NetworkStack trả về Stack ID (ARN) dạng .../stack/<TÊN>/<GUID>,
-  #    Split theo "/" rồi lấy phần tử [1] để ra tên thật của nested stack.
+  # 2. Security: Public SG + Private SG (ImportValue VpcId tu NetworkStack)
+  #    !Ref NetworkStack tra ve Stack ID (ARN) dang .../stack/<TEN>/<GUID>,
+  #    Split theo "/" roi lay phan tu [1] de ra ten that cua nested stack.
   # ---------------------------------------------------------------------------
   SecurityStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub "https://${TemplatesBucketName}.s3.${AWS::Region}.amazonaws.com/${TemplatesPrefix}/security-groups.yaml"
+      TemplateURL: !Sub "https://${TemplatesBucketName}.s3.${AWS::Region}.amazonaws.com/${TemplatesPrefix}/02-security-groups.yaml"
       Parameters:
         NetworkStackName: !Select [1, !Split ["/", !Ref NetworkStack]]
         MyIp: !Ref MyIp
 
   # ---------------------------------------------------------------------------
-  # 3. EC2: Bastion + Private App (ImportValue Subnet IDs và SG IDs)
+  # 3. EC2: Bastion + Private App (ImportValue Subnet IDs va SG IDs)
   # ---------------------------------------------------------------------------
   Ec2Stack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub "https://${TemplatesBucketName}.s3.${AWS::Region}.amazonaws.com/${TemplatesPrefix}/ec2-instances.yaml"
+      TemplateURL: !Sub "https://${TemplatesBucketName}.s3.${AWS::Region}.amazonaws.com/${TemplatesPrefix}/03-ec2-instances.yaml"
       Parameters:
         NetworkStackName: !Select [1, !Split ["/", !Ref NetworkStack]]
         SecurityStackName: !Select [1, !Split ["/", !Ref SecurityStack]]
@@ -89,17 +89,17 @@ Resources:
 
 Outputs:
   VpcId:
-    Description: ID của VPC
+    Description: ID cua VPC
     Value: !GetAtt NetworkStack.Outputs.VpcId
 
   NatPublicIP:
-    Description: Public IP (Elastic IP) của NAT Gateway
+    Description: Public IP (Elastic IP) cua NAT Gateway
     Value: !GetAtt NetworkStack.Outputs.NatPublicIP
 
   PublicEC2IP:
-    Description: Public IP của Bastion Host
+    Description: Public IP cua Bastion Host
     Value: !GetAtt Ec2Stack.Outputs.PublicEC2IP
 
   PrivateEC2InternalIP:
-    Description: Private IP của Private EC2
+    Description: Private IP cua Private EC2
     Value: !GetAtt Ec2Stack.Outputs.PrivateEC2InternalIP

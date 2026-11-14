@@ -1,26 +1,26 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: Template tạo 2 EC2 Instances Private và Public
+Description: "Template tao 2 EC2 Instances: Private va Public"
 
 Parameters:
   NetworkStackName:
     Type: String
     Default: my-vpc
-    Description: Tên stack 1 (01-vpc-network.yaml) 
+    Description: Ten stack 1 (01-vpc-network.yaml) 
   SecurityStackName:
     Type: String
     Default: my-sg
-    Description: Tên stack 2 (02-security-groups.yaml)
+    Description: Ten stack 2 (02-security-groups.yaml)
   KeyName:
     Type: AWS::EC2::KeyPair::KeyName
-    Description: Tên SSH Key Pair 
+    Description: Ten SSH Key Pair 
   InstanceType:
     Type: String
     Default: t3.micro
-    Description: Loại instance, processor
+    Description: Loai instance, processor
   LatestAmiId:
     Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
     Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64
-    Description: AMI Amazon Linux 2023 mới nhất 
+    Description: AMI Amazon Linux 2023 moi nhat 
 
 Resources:
   # ---------------------------------------------------------------------------
@@ -33,7 +33,7 @@ Resources:
       InstanceType: !Ref InstanceType
       KeyName: !Ref KeyName
       NetworkInterfaces:
-        - DeviceIndex: "0" # Network interface đầu 
+        - DeviceIndex: "0" # Network interface dau 
           AssociatePublicIpAddress: true
           SubnetId:
             Fn::ImportValue: !Sub "${NetworkStackName}-PublicSubnetId"
@@ -65,13 +65,13 @@ Resources:
 
 Outputs:
   PublicEC2IP:
-    Description: Public IP của Bastion Host
+    Description: Public IP cua Bastion Host
     Value: !GetAtt PublicEC2.PublicIp
     Export:
       Name: !Sub "${AWS::StackName}-PublicEC2IP"
 
   PrivateEC2InternalIP:
-    Description: Private IP của Private EC2
+    Description: Private IP cua Private EC2
     Value: !GetAtt PrivateEC2.PrivateIp
     Export:
       Name: !Sub "${AWS::StackName}-PrivateEC2InternalIP"

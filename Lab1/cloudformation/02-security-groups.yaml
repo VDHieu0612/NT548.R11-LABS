@@ -1,33 +1,33 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: Template tạo Security Groups (Public và Private)
+Description: Template tao Security Groups (Public va Private)
 
 Parameters:
   NetworkStackName:
     Type: String
     Default: my-vpc
-    Description: Tên stack 1 (01-vpc-network.yaml) để lấy VpcId
+    Description: Ten stack 1 (01-vpc-network.yaml) de lay VpcId
   MyIp:
     Type: String
-    Description: IP public theo dạng CIDR
+    Description: IP public theo dang CIDR
 
 Resources:
   # ---------------------------------------------------------------------------
-  # Public Security Group: chỉ cho SSH port 22 từ MyIp
+  # Public Security Group: chi cho SSH port 22 tu MyIp
   # ---------------------------------------------------------------------------
   PublicSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Public EC2 - SSH từ MyIp
+      GroupDescription: Public EC2 - SSH from MyIp
       VpcId:
         Fn::ImportValue: !Sub "${NetworkStackName}-VpcId"
       SecurityGroupIngress:
-        - Description: SSH từ MyIp
+        - Description: SSH from MyIp
           IpProtocol: tcp
           FromPort: 22
           ToPort: 22
           CidrIp: !Ref MyIp
       SecurityGroupEgress:
-        - Description: Egress mở mọi luồng
+        - Description: Allow all outbound
           IpProtocol: "-1"
           CidrIp: 0.0.0.0/0
       Tags:
@@ -35,27 +35,27 @@ Resources:
           Value: !Sub "${AWS::StackName}-public-sg"
 
   # ---------------------------------------------------------------------------
-  # Private Security Group: chỉ cho SSH port 22 từ Public SG
+  # Private Security Group: chi cho SSH port 22 tu Public SG
   # ---------------------------------------------------------------------------
   PrivateSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Private EC2 - SSH and ICMP từ Public Security Group
+      GroupDescription: Private EC2 - SSH and ICMP from Public Security Group
       VpcId:
         Fn::ImportValue: !Sub "${NetworkStackName}-VpcId"
       SecurityGroupIngress:
-        - Description: SSH từ Public Security Group
+        - Description: SSH from Public Security Group
           IpProtocol: tcp
           FromPort: 22
           ToPort: 22
           SourceSecurityGroupId: !Ref PublicSecurityGroup
-        - Description: Ping (ICMP) từ Public Security Group
+        - Description: Ping (ICMP) from Public Security Group
           IpProtocol: icmp
           FromPort: -1
           ToPort: -1
           SourceSecurityGroupId: !Ref PublicSecurityGroup
       SecurityGroupEgress:
-        - Description: Mở mọi nguồn 
+        - Description: Allow all outbound 
           IpProtocol: "-1"
           CidrIp: 0.0.0.0/0
       Tags:
@@ -64,13 +64,13 @@ Resources:
 
 Outputs:
   PublicSecurityGroupId:
-    Description: ID của Public Security Group 
+    Description: ID cua Public Security Group 
     Value: !Ref PublicSecurityGroup
     Export:
       Name: !Sub "${AWS::StackName}-PublicSecurityGroupId"
 
   PrivateSecurityGroupId:
-    Description: ID của Private Security Group 
+    Description: ID cua Private Security Group 
     Value: !Ref PrivateSecurityGroup
     Export:
       Name: !Sub "${AWS::StackName}-PrivateSecurityGroupId"
