@@ -1,0 +1,105 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  Master template dieu phoi 3 nested stacks theo thu tu:
+  Network (01-vpc-network.yaml) -> Security (02-security-groups.yaml) -> EC2 (03-ec2-instances.yaml).
+  3 template con phai duoc upload len S3 truoc khi deploy.
+
+Parameters:
+  # --- Noi chua 3 template con ---
+  TemplatesBucketName:
+    Type: String
+    Description: Ten S3 bucket cung region chua upload 3 template con
+  TemplatesPrefix:
+    Type: String
+    Default: cfn
+    Description: Thu muc (prefix) trong bucket chua 3 template con
+
+  # --- Network ---
+  ProjectName:
+    Type: String
+    Default: my-project
+    Description: Tien to dat ten cho cac resource
+  VpcCidr:
+    Type: String
+    Default: 10.0.0.0/16
+  PublicSubnetCidr:
+    Type: String
+    Default: 10.0.1.0/24
+  PrivateSubnetCidr:
+    Type: String
+    Default: 10.0.2.0/24
+  AvailabilityZone:
+    Type: String
+    Default: ""
+    Description: AZ cho 2 subnet. De trong se dung AZ dau tien cua region
+
+  # --- Security ---
+  MyIp:
+    Type: String
+    Description: IP public cua ban theo dang CIDR
+  # --- EC2 ---
+  KeyName:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: Ten SSH Key Pair 
+  InstanceType:
+    Type: String
+    Default: t3.micro
+    Description: Loai instance. processor
+
+Resources:
+  # ---------------------------------------------------------------------------
+  # 1. Network: VPC, Subnets, IGW, NAT, Route Tables
+  # ---------------------------------------------------------------------------
+  NetworkStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub "https://${TemplatesBucketName}.s3.${AWS::Region}.amazonaws.com/${TemplatesPrefix}/01-vpc-network.yaml"
+      Parameters:
+        ProjectName: !Ref ProjectName
+        VpcCidr: !Ref VpcCidr
+        PublicSubnetCidr: !Ref PublicSubnetCidr
+        PrivateSubnetCidr: !Ref PrivateSubnetCidr
+        AvailabilityZone: !Ref AvailabilityZone
+
+  # ---------------------------------------------------------------------------
+  # 2. Security: Public SG + Private SG (ImportValue VpcId tu NetworkStack)
+  #    !Ref NetworkStack tra ve Stack ID (ARN) dang .../stack/<TEN>/<GUID>,
+  #    Split theo "/" roi lay phan tu [1] de ra ten that cua nested stack.
+  # ---------------------------------------------------------------------------
+  SecurityStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub "https://${TemplatesBucketName}.s3.${AWS::Region}.amazonaws.com/${TemplatesPrefix}/02-security-groups.yaml"
+      Parameters:
+        NetworkStackName: !Select [1, !Split ["/", !Ref NetworkStack]]
+        MyIp: !Ref MyIp
+
+  # ---------------------------------------------------------------------------
+  # 3. EC2: Bastion + Private App (ImportValue Subnet IDs va SG IDs)
+  # ---------------------------------------------------------------------------
+  Ec2Stack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub "https://${TemplatesBucketName}.s3.${AWS::Region}.amazonaws.com/${TemplatesPrefix}/03-ec2-instances.yaml"
+      Parameters:
+        NetworkStackName: !Select [1, !Split ["/", !Ref NetworkStack]]
+        SecurityStackName: !Select [1, !Split ["/", !Ref SecurityStack]]
+        KeyName: !Ref KeyName
+        InstanceType: !Ref InstanceType
+
+Outputs:
+  VpcId:
+    Description: ID cua VPC
+    Value: !GetAtt NetworkStack.Outputs.VpcId
+
+  NatPublicIP:
+    Description: Public IP (Elastic IP) cua NAT Gateway
+    Value: !GetAtt NetworkStack.Outputs.NatPublicIP
+
+  PublicEC2IP:
+    Description: Public IP cua Bastion Host
+    Value: !GetAtt Ec2Stack.Outputs.PublicEC2IP
+
+  PrivateEC2InternalIP:
+    Description: Private IP cua Private EC2
+    Value: !GetAtt Ec2Stack.Outputs.PrivateEC2InternalIP
