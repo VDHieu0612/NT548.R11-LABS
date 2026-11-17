@@ -1,10 +1,10 @@
-# 1. Goi module VPC 
+# 1. Goi module VPC
 module "vpc" {
   source       = "../../modules/vpc"
   project_name = var.project_name
 }
 
-# 2. Goi module NAT Gateway & Route Tables 
+# 2. Goi module NAT Gateway & Route Tables
 module "nat" {
   source              = "../../modules/nat"
   project_name        = var.project_name
@@ -14,7 +14,7 @@ module "nat" {
   internet_gateway_id = module.vpc.internet_gateway_id
 }
 
-# 3. Goi module Security Groups 
+# 3. Goi module Security Groups
 module "security" {
   source         = "../../modules/security"
   project_name   = var.project_name
@@ -22,7 +22,7 @@ module "security" {
   allowed_ssh_ip = var.allowed_ssh_ip
 }
 
-# 4. Goi module EC2 Instances 
+# 4. Goi module EC2 Instances
 module "ec2" {
   source                   = "../../modules/ec2"
   project_name             = var.project_name
