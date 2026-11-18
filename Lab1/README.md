@@ -154,12 +154,16 @@ Phần này giúp từng thành viên hình dung rõ cấu trúc, mục đích c
 ### 3. Phân hệ Scripts & Automation (Hoàng Lê Nhật Minh phụ trách)
 
 - `scripts/test_connectivity.sh`:
-  - Viết Bash script tự động nhận 3 tham số: `<path_key.pem> <PUBLIC_IP> <PRIVATE_IP>`.
+  - Bash script nhận tham số: `<path_key.pem> <PUBLIC_IP> <PRIVATE_IP> [NAT_EIP]`.
   - Thực hiện kiểm tra tự động:
     1. SSH vào Public EC2 (TC01) bằng command `ssh -i <key> ec2-user@<PUBLIC_IP> "uptime"`.
-    2. SSH nhảy cóc vào Private EC2 (TC04) qua tùy chọn `-o ProxyJump="ec2-user@<PUBLIC_IP>"`.
-    3. Từ Private EC2 gọi lệnh `curl -s ifconfig.me` để xác minh Private EC2 đi ra Internet bằng đúng Elastic IP của NAT Gateway (TC05).
-  - In ra kết quả `PASSED` / `FAILED` trực quan trên terminal để chụp ảnh làm báo cáo.
+    2. (Cần AWS CLI) Kiểm tra Public SG không mở SSH cho `0.0.0.0/0` (TC02 - phần cấu hình).
+    3. SSH thẳng vào Private IP phải thất bại; Private EC2 không có Public IP (TC03).
+    4. SSH nhảy cóc vào Private EC2 qua Bastion bằng `ProxyCommand` và ping từ Bastion (TC04).
+       > Không dùng `-J`/`ProxyJump` vì tùy chọn `-i <key>` không được áp dụng cho chặng Bastion.
+    5. Từ Private EC2 gọi `curl checkip.amazonaws.com` để xác minh IP ra Internet chính là Elastic IP của NAT Gateway (TC05).
+  - In kết quả `PASSED` / `FAILED` / `SKIPPED`, trả exit code 0 khi không có test FAILED (TC06) và lưu log vào `scripts/logs/` (đã gitignore).
+- `docs/BaoCao_Lab01_Nhom04.docx`: Báo cáo thực hành theo biểu mẫu UIT (các chỗ tô vàng là ảnh minh chứng / kết quả cần điền sau khi chạy test).
 
 ---
 
@@ -187,21 +191,44 @@ terraform destroy -auto-approve
 
 ### 2. Triển khai bằng CloudFormation
 ```bash
-# Triển khai qua AWS CLI
+# Triển khai qua AWS CLI (chạy tại thư mục Lab1/)
 aws cloudformation deploy \
   --template-file cloudformation/01-vpc-network.yaml \
-  --stack-name lab01-network-stack \
-  --capabilities CAPABILITY_NAMED_IAM
+  --stack-name my-vpc \
+  --parameter-overrides ProjectName=NT548-Lab01
 
 aws cloudformation deploy \
   --template-file cloudformation/02-security-groups.yaml \
-  --stack-name lab01-security-stack \
-  --parameter-overrides MyPublicIP=$(curl -s ifconfig.me)/32
+  --stack-name my-sg \
+  --parameter-overrides NetworkStackName=my-vpc MyIp=$(curl -s https://checkip.amazonaws.com)/32
 
 aws cloudformation deploy \
   --template-file cloudformation/03-ec2-instances.yaml \
-  --stack-name lab01-compute-stack
+  --stack-name my-ec2 \
+  --parameter-overrides NetworkStackName=my-vpc SecurityStackName=my-sg KeyName=vockey
+
+# Hủy tài nguyên (theo thứ tự ngược vì các stack Export/Import lẫn nhau)
+for s in my-ec2 my-sg my-vpc; do
+  aws cloudformation delete-stack --stack-name $s
+  aws cloudformation wait stack-delete-complete --stack-name $s
+done
 ```
+
+### 3. Chạy kiểm thử tự động
+```bash
+# Hạ tầng Terraform (chạy tại Lab1/terraform/environments/dev)
+bash ../../../scripts/test_connectivity.sh ~/.ssh/labsuser.pem \
+  $(terraform output -raw public_bastion_ip) \
+  $(terraform output -raw private_instance_internal_ip) \
+  $(aws ec2 describe-addresses --filters Name=tag:Name,Values=NT548-Lab01-nat-eip --query 'Addresses[0].PublicIp' --output text)
+
+# Hạ tầng CloudFormation (chạy tại Lab1/)
+get() { aws cloudformation describe-stacks --stack-name "$1" \
+          --query "Stacks[0].Outputs[?OutputKey=='$2'].OutputValue" --output text; }
+bash scripts/test_connectivity.sh ~/.ssh/labsuser.pem \
+  $(get my-ec2 PublicEC2IP) $(get my-ec2 PrivateEC2InternalIP) $(get my-vpc NatPublicIP)
+```
+TC02 cần kiểm tra thủ công từ một IP khác (ví dụ AWS CloudShell): `ssh -o ConnectTimeout=10 -i labsuser.pem ec2-user@<PUBLIC_IP>` phải bị timeout.
 
 ---
 
@@ -214,7 +241,7 @@ aws cloudformation deploy \
 | **TC03** | Chặn SSH trực tiếp vào Private EC2 | Thử SSH trực tiếp vào IP nội bộ hoặc IP Public (nếu có) từ Internet | Không thể truy cập từ Internet |
 | **TC04** | SSH từ Public EC2 sang Private EC2 | SSH vào Public EC2, sau đó chạy `ssh ec2-user@<PRIVATE_IP>` | Kết nối thành công (Bastion pattern) |
 | **TC05** | Private EC2 ra Internet qua NAT Gateway | Đứng trên Private EC2 chạy: `curl -I https://google.com` hoặc `curl ifconfig.me` | Kết nối thành công; IP trả về chính là Elastic IP của NAT Gateway |
-| **TC06** | Test Script tự động | Chạy `bash scripts/test_connectivity.sh` | Tất cả assertions đều PASSED |
+| **TC06** | Test Script tự động | Chạy `bash scripts/test_connectivity.sh <key> <PUBLIC_IP> <PRIVATE_IP> [NAT_EIP]` | Không có test FAILED, exit code 0 |
 
 ---
 
