@@ -149,7 +149,7 @@ if [[ $HAS_AWS -eq 1 ]]; then
   else
     # shellcheck disable=SC2086
     CIDRS=$(aws ec2 describe-security-groups --group-ids $SG_IDS \
-             --query 'SecurityGroups[].IpPermissions[?FromPort<=`22` && ToPort>=`22`].IpRanges[].CidrIp' \
+             --query 'SecurityGroups[].IpPermissions[] | [?FromPort<=`22` && ToPort>=`22`].IpRanges[].CidrIp' \
              --output text 2>/dev/null | tr '\t' ' ')
     echo "     Security Group: $SG_IDS"
     echo "     CIDR duoc phep SSH: ${CIDRS:-<khong co>}"
