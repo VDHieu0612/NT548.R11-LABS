@@ -17,13 +17,13 @@ volumes:
 
 services:
   # =========================================================================
-  # 1. Jenkins Automation Server (Tu dong build kem Docker CLI)
+  # 1. Jenkins Automation Server (Tu dong build kem Docker CLI & Java 21)
   # =========================================================================
   jenkins:
     build:
       context: .
       dockerfile: Dockerfile.jenkins
-    image: jenkins-custom:lts-jdk17
+    image: jenkins-custom:lts-jdk21
     container_name: jenkins-server
     restart: unless-stopped
     user: root # Quyen root de goi docker socket build image tren host
