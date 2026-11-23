@@ -45,3 +45,9 @@ Thumbs.db
 
 # Log kiem thu (chua IP that)
 Lab1/scripts/logs/
+
+# Node.js dependencies & test coverage
+**/node_modules/
+**/coverage/
+.npm
+
