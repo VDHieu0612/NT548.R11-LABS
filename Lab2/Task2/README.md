@@ -58,8 +58,8 @@ lab2-cfn/
 
 ```bash 
 git checkout -b main 
-git add 
-git comit -m "..." 
+git add .
+git commit -m "..." 
 git push -u origin main
 ```
 
