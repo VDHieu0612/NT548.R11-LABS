@@ -42,3 +42,12 @@ Thumbs.db
 
 # Test folders
 **/test_*/
+
+# Log kiem thu (chua IP that)
+Lab1/scripts/logs/
+
+# Node.js dependencies & test coverage
+**/node_modules/
+**/coverage/
+.npm
+
