@@ -1,0 +1,202 @@
+// =============================================================================
+// NT548.R11 - Lab 02 - Task 3: CI/CD Microservice voi Jenkins, SonarQube, Docker
+// Phu trach pipeline: Hoang Le Nhat Minh (23520926)
+//
+// Luong pipeline:
+//   Checkout -> Unit Test (Jest + coverage) -> SonarQube Analysis + Quality Gate
+//   -> Docker Build -> Trivy Image Scan -> Deploy (Docker container) -> Smoke Test
+//
+// Yeu cau tren Jenkins (xem Lab2/Task3/README.md):
+//   - Jenkins chay bang docker-compose.yml cua Task3 (co Docker CLI + docker.sock)
+//   - Plugin: Pipeline, Git, Credentials Binding, Timestamper (bo "suggested plugins")
+//   - Credential kieu "Secret text" id = sonarqube-token (token tao tren SonarQube)
+//
+// Ghi chu ky thuat: Jenkins chay trong container va goi Docker cua host qua
+// docker.sock, nen duong dan $WORKSPACE KHONG ton tai tren host. Cac container
+// cong cu (node, sonar-scanner, trivy) duoc chay voi --volumes-from <jenkins>
+// de dung chung volume jenkins_home, nho do thay duoc ma nguon trong workspace.
+// =============================================================================
+
+pipeline {
+    agent any
+
+    options {
+        timestamps()
+        timeout(time: 30, unit: 'MINUTES')
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+        disableConcurrentBuilds()
+    }
+
+    parameters {
+        string(name: 'APP_PORT', defaultValue: '3000',
+               description: 'Cong tren may host de publish ung dung (container luon nghe cong 3000)')
+        booleanParam(name: 'TRIVY_FAIL_ON_CRITICAL', defaultValue: true,
+                     description: 'Dung pipeline neu image co lo hong CRITICAL da co ban va')
+    }
+
+    environment {
+        // Lan build dau tien Jenkins chua biet tham so -> dung gia tri mac dinh
+        APP_PORT       = "${params.APP_PORT ?: '3000'}"
+        TASK_DIR       = 'Lab2/Task3'
+        APP_DIR        = 'Lab2/Task3/app'
+        IMAGE_NAME     = 'nt548-microservice'
+        IMAGE_TAG      = "${env.BUILD_NUMBER}"
+        CONTAINER_NAME = 'nt548-microservice'
+        DOCKER_NETWORK = 'cicd-net'
+        SONAR_HOST_URL = 'http://sonarqube:9000'
+        NODE_IMAGE     = 'node:20-alpine'
+        SCANNER_IMAGE  = 'sonarsource/sonar-scanner-cli:latest'
+        TRIVY_IMAGE    = 'aquasec/trivy:latest'
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+                sh '''
+                    git log -1 --pretty="format:Commit: %h - %s (%an)%n"
+                    echo "Jenkins container: $(cat /etc/hostname)"
+                    docker version --format "Docker server: {{.Server.Version}}"
+                '''
+            }
+        }
+
+        stage('Unit Test') {
+            steps {
+                sh '''
+                    docker run --rm \
+                      --volumes-from "$(cat /etc/hostname)" \
+                      -w "$WORKSPACE/$APP_DIR" \
+                      "$NODE_IMAGE" \
+                      sh -c "npm ci --no-audit --no-fund && npm test"
+
+                    # Jest ghi duong dan tuong doi theo thu muc app/ (SF:src/app.js), con
+                    # SonarQube quet tu Lab2/Task3 (sonar.sources=app/src) -> doi thanh
+                    # SF:app/src/app.js de SonarQube khop file va hien dung % coverage.
+                    sed -i 's#^SF:src/#SF:app/src/#' "$APP_DIR/coverage/lcov.info"
+                '''
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: "${APP_DIR}/coverage/lcov-report/**",
+                                     allowEmptyArchive: true
+                }
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            steps {
+                withCredentials([string(credentialsId: 'sonarqube-token', variable: 'SONAR_TOKEN')]) {
+                    // sonar.qualitygate.wait=true: scanner cho SonarQube tinh Quality Gate,
+                    // neu gate FAILED thi lenh tra ve exit code khac 0 va pipeline dung lai.
+                    sh '''
+                        docker run --rm \
+                          --volumes-from "$(cat /etc/hostname)" \
+                          --network "$DOCKER_NETWORK" \
+                          -e SONAR_HOST_URL="$SONAR_HOST_URL" \
+                          -e SONAR_TOKEN="$SONAR_TOKEN" \
+                          "$SCANNER_IMAGE" \
+                          -Dsonar.projectBaseDir="$WORKSPACE/$TASK_DIR" \
+                          -Dsonar.qualitygate.wait=true \
+                          -Dsonar.qualitygate.timeout=300
+                    '''
+                }
+            }
+        }
+
+        stage('Docker Build') {
+            steps {
+                sh '''
+                    docker build \
+                      --label "org.opencontainers.image.revision=$(git rev-parse --short HEAD)" \
+                      --label "jenkins.build=$BUILD_NUMBER" \
+                      -t "$IMAGE_NAME:$IMAGE_TAG" -t "$IMAGE_NAME:latest" \
+                      "$APP_DIR"
+                    docker image ls "$IMAGE_NAME"
+                '''
+            }
+        }
+
+        stage('Trivy Image Scan') {
+            steps {
+                // 1) Bao cao day du HIGH + CRITICAL (khong lam fail build), luu thanh artifact
+                sh '''
+                    docker run --rm \
+                      --volumes-from "$(cat /etc/hostname)" \
+                      -v trivy-cache:/root/.cache/trivy \
+                      "$TRIVY_IMAGE" image --no-progress \
+                      --scanners vuln --severity HIGH,CRITICAL \
+                      --format table --output "$WORKSPACE/trivy-report.txt" \
+                      "$IMAGE_NAME:$IMAGE_TAG"
+                    cat "$WORKSPACE/trivy-report.txt"
+                '''
+                // 2) Cong bao mat: fail neu co lo hong CRITICAL da co ban va
+                script {
+                    if (params.TRIVY_FAIL_ON_CRITICAL) {
+                        sh '''
+                            docker run --rm \
+                              --volumes-from "$(cat /etc/hostname)" \
+                              -v trivy-cache:/root/.cache/trivy \
+                              "$TRIVY_IMAGE" image --no-progress --quiet \
+                              --scanners vuln --severity CRITICAL --ignore-unfixed \
+                              --exit-code 1 \
+                              "$IMAGE_NAME:$IMAGE_TAG"
+                        '''
+                    }
+                }
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'trivy-report.txt', allowEmptyArchive: true
+                }
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                sh '''
+                    docker rm -f "$CONTAINER_NAME" >/dev/null 2>&1 || true
+                    docker run -d \
+                      --name "$CONTAINER_NAME" \
+                      --network "$DOCKER_NETWORK" \
+                      -p "$APP_PORT:3000" \
+                      --restart unless-stopped \
+                      "$IMAGE_NAME:$IMAGE_TAG"
+                    docker ps --filter "name=$CONTAINER_NAME" \
+                      --format "table {{.Names}}\\t{{.Image}}\\t{{.Status}}\\t{{.Ports}}"
+                '''
+            }
+        }
+
+        stage('Smoke Test') {
+            steps {
+                // Jenkins va ung dung cung mang cicd-net nen goi duoc bang ten container
+                sh '''
+                    for i in $(seq 1 15); do
+                      if curl -fsS "http://$CONTAINER_NAME:3000/api/health" >/dev/null; then
+                        echo "Ung dung san sang sau $i lan thu"; break
+                      fi
+                      [ "$i" -eq 15 ] && { echo "Ung dung khong phan hoi"; docker logs "$CONTAINER_NAME"; exit 1; }
+                      sleep 2
+                    done
+                    echo "--- GET /";            curl -fsS "http://$CONTAINER_NAME:3000/";         echo
+                    echo "--- GET /api/health"; curl -fsS "http://$CONTAINER_NAME:3000/api/health"; echo
+                    echo "--- GET /api/info";   curl -fsS "http://$CONTAINER_NAME:3000/api/info";   echo
+                '''
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "PIPELINE THANH CONG: ${IMAGE_NAME}:${IMAGE_TAG} dang chay tai http://localhost:${params.APP_PORT}"
+        }
+        failure {
+            echo 'PIPELINE THAT BAI: xem log cua stage bi loi o tren.'
+        }
+        always {
+            // Don image cu khong con tag (giu lai image dang chay va :latest)
+            sh 'docker image prune -f >/dev/null 2>&1 || true'
+        }
+    }
+}

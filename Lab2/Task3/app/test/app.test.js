@@ -24,4 +24,9 @@ describe('Microservice API Endpoints Tests', () => {
     expect(res.body.members).toHaveLength(4);
   });
 
+  it('should not disclose framework via X-Powered-By header', async () => {
+    const res = await request(app).get('/api/health');
+    expect(res.headers).not.toHaveProperty('x-powered-by');
+  });
+
 });
