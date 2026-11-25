@@ -1,0 +1,7 @@
+framework:
+  - terraform
+download-external-modules: false
+evaluate-variables: true
+skip-download: true
+soft-fail: false
+compact: true

@@ -1,0 +1,3 @@
+# Documentation-only addresses; used for source scanning, never for deployment.
+allowed_ssh_ip    = "192.0.2.10/32"
+state_bucket_name = "nt548-example-state-not-created"

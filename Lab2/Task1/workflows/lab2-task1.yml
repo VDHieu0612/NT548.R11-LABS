@@ -1,0 +1,164 @@
+# Activation: copy this file to .github/workflows/lab2-task1.yml manually.
+# It is intentionally stored inside Task1 to respect the allowed write scope.
+name: Lab2 Task1 Terraform
+
+on:
+  pull_request:
+    branches: [main]
+    paths: ['Lab2/Task1/**', '.github/workflows/lab2-task1.yml']
+  push:
+    branches: [main, feature/lab2-member2-github-actions]
+    paths: ['Lab2/Task1/**', '.github/workflows/lab2-task1.yml']
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: 'Deployment requires main, configured AWS/state and TF_DEPLOYMENT_READY=true'
+        type: choice
+        options: [check, plan, apply]
+        default: check
+
+permissions:
+  contents: read
+
+env:
+  TASK_ROOT: Lab2/Task1
+  TF_IN_AUTOMATION: 'true'
+  CHECKPOINT_DISABLE: '1'
+  PYTHONDONTWRITEBYTECODE: '1'
+  PYTHONUTF8: '1'
+
+jobs:
+  ci:
+    name: Format, validate, mock tests and Checkov
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    concurrency:
+      group: task1-ci-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.11'
+      - name: Read Terraform version
+        id: version
+        run: echo "version=$(cat "$TASK_ROOT/terraform/environments/dev/.terraform-version")" >> "$GITHUB_OUTPUT"
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: ${{ steps.version.outputs.version }}
+          terraform_wrapper: false
+      - name: Install pinned Checkov
+        run: python -m pip install --disable-pip-version-check -r "$TASK_ROOT/requirements-checkov.txt"
+      - name: Test gate, input guards and state strategy
+        run: python -m unittest discover -s "$TASK_ROOT/tests" -v
+      - name: Check source without AWS credentials
+        run: python "$TASK_ROOT/scripts/verify_local.py"
+
+  deploy:
+    name: Trusted Terraform plan and optional apply
+    needs: ci
+    if: >-
+      ${{ github.ref == 'refs/heads/main' && vars.TF_DEPLOYMENT_READY == 'true' &&
+          ((github.event_name == 'workflow_dispatch' && inputs.operation != 'check') ||
+           (github.event_name == 'push' && vars.TF_AUTO_APPLY == 'true')) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions:
+      contents: read
+      id-token: write
+    concurrency:
+      group: task1-state-${{ vars.TF_STATE_BUCKET }}-${{ vars.TF_STATE_KEY }}
+      cancel-in-progress: false
+    defaults:
+      run:
+        shell: bash
+        working-directory: Lab2/Task1/terraform/environments/dev
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+      AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
+      AWS_AUTH_MODE: ${{ vars.AWS_AUTH_MODE || 'session' }}
+      AWS_ROLE_ARN: ${{ vars.AWS_ROLE_ARN }}
+      TF_AVAILABILITY_ZONE: ${{ vars.TF_AVAILABILITY_ZONE || 'us-east-1a' }}
+      TF_ALLOWED_SSH_CIDR: ${{ vars.TF_ALLOWED_SSH_CIDR }}
+      TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
+      TF_STATE_KEY: ${{ vars.TF_STATE_KEY || 'lab2/task1/dev/terraform.tfstate' }}
+      TF_STATE_REGION: ${{ vars.TF_STATE_REGION || 'us-east-1' }}
+      TF_STATE_STRATEGY: ${{ vars.TF_STATE_STRATEGY }}
+      TF_DEPLOYMENT_READY: ${{ vars.TF_DEPLOYMENT_READY }}
+      TF_VAR_aws_region: ${{ vars.AWS_REGION || 'us-east-1' }}
+      TF_VAR_availability_zone: ${{ vars.TF_AVAILABILITY_ZONE || 'us-east-1a' }}
+      TF_VAR_allowed_ssh_ip: ${{ vars.TF_ALLOWED_SSH_CIDR }}
+      TF_VAR_project_name: ${{ vars.TF_PROJECT_NAME || 'NT548-Lab01' }}
+      TF_VAR_instance_type: ${{ vars.TF_INSTANCE_TYPE || 't2.micro' }}
+      TF_VAR_key_name: ${{ vars.TF_KEY_NAME || 'vockey' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.11'
+      - name: Validate settings and render backend config
+        working-directory: .
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
+        run: python "$TASK_ROOT/scripts/prepare_deployment.py"
+      - name: Read Terraform version
+        id: version
+        run: echo "version=$(cat .terraform-version)" >> "$GITHUB_OUTPUT"
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: ${{ steps.version.outputs.version }}
+          terraform_wrapper: false
+      - name: Authenticate with Learner Lab session
+        if: env.AWS_AUTH_MODE == 'session'
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ env.AWS_REGION }}
+          allowed-account-ids: ${{ env.AWS_ACCOUNT_ID }}
+          mask-aws-account-id: true
+          unset-current-credentials: true
+          force-skip-oidc: true
+      - name: Authenticate with OIDC if configured
+        if: env.AWS_AUTH_MODE == 'oidc'
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          role-session-name: lab2-task1-${{ github.run_id }}
+          aws-region: ${{ env.AWS_REGION }}
+          allowed-account-ids: ${{ env.AWS_ACCOUNT_ID }}
+          mask-aws-account-id: true
+          unset-current-credentials: true
+      - name: Initialize shared state with locking
+        run: terraform init -input=false -lockfile=readonly -backend-config=backend.hcl
+      - name: Verify state strategy before planning
+        run: python ../../../scripts/check_state.py --strategy "$TF_STATE_STRATEGY"
+      - name: Validate deployment configuration
+        run: terraform validate -no-color
+      - name: Save the plan for this exact run
+        run: |
+          umask 077
+          mkdir -p "$GITHUB_WORKSPACE/$TASK_ROOT/.artifacts"
+          terraform plan -input=false -lock-timeout=5m -no-color \
+            -out="$GITHUB_WORKSPACE/$TASK_ROOT/.artifacts/dev.tfplan"
+      - name: Apply the saved plan after all gates
+        if: github.event_name == 'push' || inputs.operation == 'apply'
+        run: terraform apply -input=false -lock-timeout=5m -no-color "$GITHUB_WORKSPACE/$TASK_ROOT/.artifacts/dev.tfplan"
+      - name: Remove local deployment artifacts
+        if: always()
+        working-directory: .
+        run: |
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          root = Path(os.environ['TASK_ROOT'])
+          for path in [root / '.artifacts/dev.tfplan', root / 'terraform/environments/dev/backend.hcl']:
+              path.unlink(missing_ok=True)
+          PY
