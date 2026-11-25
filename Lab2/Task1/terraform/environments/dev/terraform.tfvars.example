@@ -1,0 +1,9 @@
+aws_region        = "us-east-1"
+availability_zone = "us-east-1a"
+project_name      = "NT548-Lab01"
+allowed_ssh_ip    = "YOUR_PUBLIC_IP/32" # Thay bang IPv4 Public thuc te cua ban; chi cho phep /32
+instance_type     = "t2.micro"
+key_name          = "vockey"
+
+# CI co the truyen TF_VAR_* tu GitHub Variables/Secrets thay vi tao file tfvars.
+# Khong dat AWS credentials hoac private key vao file nay.
