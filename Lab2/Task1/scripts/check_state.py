@@ -3,6 +3,7 @@
 import argparse
 import subprocess
 import sys
+import re
 
 EXPECTED = {
     "module.vpc.aws_vpc.main", "module.vpc.aws_internet_gateway.main",
@@ -27,7 +28,11 @@ def validate_addresses(addresses, strategy):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--strategy", choices=["existing", "new"], required=True)
+    parser.add_argument(
+        "--strategy",
+        choices=["existing", "new"],
+        required=True
+    )
     args = parser.parse_args()
 
     try:
@@ -39,21 +44,27 @@ def main():
             timeout=120
         )
 
+        # Remove ANSI color codes from Terraform output
+        stderr = re.sub(
+            r"\x1b\[[0-?]*[ -/]*[@-~]",
+            "",
+            result.stderr
+        ).strip()
+
+        print(f"State strategy: {args.strategy}")
+
         if result.returncode != 0:
             if (
                 args.strategy == "new"
                 and result.returncode == 1
                 and not result.stdout.strip()
-                and result.stderr.strip().startswith(
-                    "No state file was found!"
-                )
+                and stderr.startswith("No state file was found!")
             ):
                 print("No remote state found. First deployment allowed.")
                 addresses = []
             else:
                 raise ValueError(
-                    result.stderr.strip()
-                    or f"Terraform exited with code {result.returncode}"
+                    stderr or f"Terraform exited with code {result.returncode}"
                 )
         else:
             addresses = result.stdout.splitlines()
