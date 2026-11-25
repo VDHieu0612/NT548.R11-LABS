@@ -1,0 +1,6 @@
+aws_region     = "us-east-1"
+project_name   = "NT548-Lab01"
+allowed_ssh_ip = "YOUR_PUBLIC_IP/32"  # Thay IP thuc te cua ban vao day (vi du: 113.161.12.34/32)
+instance_type  = "t2.micro"
+key_name       = "vockey"
+
