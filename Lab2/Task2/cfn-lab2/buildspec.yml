@@ -1,0 +1,31 @@
+version: 0.2
+
+phases:
+  install:
+    commands:
+      # taskcat still imports pkg_resources, which newer setuptools releases no longer ship.
+      # Pin setuptools in the same command so pip does not pick the newest one.
+      - python3 -m pip install --quiet "setuptools<81" cfn-lint taskcat
+      # taskcat looks up a profile named "default"; CodeBuild has none, so create one with the region only.
+      # Credentials still come from the CodeBuild service role.
+      - mkdir -p ~/.aws
+      - printf "[default]\nregion=%s\n" "$AWS_DEFAULT_REGION" > ~/.aws/config
+
+  pre_build:
+    commands:
+      - echo "=== Step 1 - cfn-lint ==="
+      - cfn-lint --version
+      - cfn-lint "cloudformation/*.yaml"
+
+  build:
+    commands:
+      - echo "=== Step 2 - taskcat (deploys test stacks, then deletes them) ==="
+      - taskcat test run
+
+  post_build:
+    commands:
+      - echo "Build finished on $(date)"
+
+artifacts:
+  files:
+    - "cloudformation/**/*"

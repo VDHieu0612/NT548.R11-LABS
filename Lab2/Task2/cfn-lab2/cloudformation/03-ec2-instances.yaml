@@ -1,0 +1,61 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Template tao 2 EC2 Instances
+
+Parameters:
+  NetworkStackName:
+    Type: String
+  SecurityStackName:
+    Type: String
+  KeyName:
+    Type: AWS::EC2::KeyPair::KeyName
+  InstanceType:
+    Type: String
+    Default: t3.micro
+  LatestAmiId:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64
+
+Resources:
+  PublicEC2:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref LatestAmiId
+      InstanceType: !Ref InstanceType
+      KeyName: !Ref KeyName
+      NetworkInterfaces:
+        - DeviceIndex: "0"
+          AssociatePublicIpAddress: true
+          SubnetId:
+            Fn::ImportValue: !Sub "${NetworkStackName}-PublicSubnetId"
+          GroupSet:
+            - Fn::ImportValue: !Sub "${SecurityStackName}-PublicSecurityGroupId"
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-bastion"
+
+  PrivateEC2:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref LatestAmiId
+      InstanceType: !Ref InstanceType
+      KeyName: !Ref KeyName
+      NetworkInterfaces:
+        - DeviceIndex: "0"
+          AssociatePublicIpAddress: false
+          SubnetId:
+            Fn::ImportValue: !Sub "${NetworkStackName}-PrivateSubnetId"
+          GroupSet:
+            - Fn::ImportValue: !Sub "${SecurityStackName}-PrivateSecurityGroupId"
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-private-app"
+
+Outputs:
+  PublicEC2IP:
+    Value: !GetAtt PublicEC2.PublicIp
+    Export:
+      Name: !Sub "${AWS::StackName}-PublicEC2IP"
+  PrivateEC2InternalIP:
+    Value: !GetAtt PrivateEC2.PrivateIp
+    Export:
+      Name: !Sub "${AWS::StackName}-PrivateEC2InternalIP"

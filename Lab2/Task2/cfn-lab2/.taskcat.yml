@@ -1,0 +1,21 @@
+project:
+  name: lab2-cfn
+  regions:
+    - us-east-1
+  package_lambda: false
+
+tests:
+  # Test 1: network stack on its own (all parameters have defaults)
+  vpc-network:
+    template: ./cloudformation/01-vpc-network.yaml
+
+  # Test 2: all three stacks together through the master template (nested stacks)
+  # 02 and 03 import exports from the stacks before them, so they cannot be tested alone.
+  # KeyName must be an existing key pair in the test region (created in step 1 of the guide).
+  full-stack:
+    template: ./cloudformation/master.yaml
+    parameters:
+      TemplatesBucketName: $[taskcat_autobucket]
+      TemplatesPrefix: lab2-cfn/cloudformation
+      MyIp: 203.0.113.10/32
+      KeyName: lab2-key

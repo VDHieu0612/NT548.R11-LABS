@@ -1,0 +1,64 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Template tao Security Groups (Public va Private)
+
+Parameters:
+  NetworkStackName:
+    Type: String
+  MyIp:
+    Type: String
+
+Resources:
+  PublicSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Public EC2 - SSH from MyIp
+      VpcId:
+        Fn::ImportValue: !Sub "${NetworkStackName}-VpcId"
+      SecurityGroupIngress:
+        - Description: SSH from MyIp
+          IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: !Ref MyIp
+      SecurityGroupEgress:
+        - Description: Allow all outbound
+          IpProtocol: "-1"
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-public-sg"
+
+  PrivateSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Private EC2 - SSH and ICMP from Public Security Group
+      VpcId:
+        Fn::ImportValue: !Sub "${NetworkStackName}-VpcId"
+      SecurityGroupIngress:
+        - Description: SSH from Public Security Group
+          IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          SourceSecurityGroupId: !Ref PublicSecurityGroup
+        - Description: Ping from Public Security Group
+          IpProtocol: icmp
+          FromPort: -1
+          ToPort: -1
+          SourceSecurityGroupId: !Ref PublicSecurityGroup
+      SecurityGroupEgress:
+        - Description: Allow all outbound
+          IpProtocol: "-1"
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-private-sg"
+
+Outputs:
+  PublicSecurityGroupId:
+    Value: !Ref PublicSecurityGroup
+    Export:
+      Name: !Sub "${AWS::StackName}-PublicSecurityGroupId"
+  PrivateSecurityGroupId:
+    Value: !Ref PrivateSecurityGroup
+    Export:
+      Name: !Sub "${AWS::StackName}-PrivateSecurityGroupId"
