@@ -1,0 +1,5 @@
+# Copy to terraform/environments/dev/backend.hcl and fill the empty bucket.
+# Create/bootstrap the bucket first. Do not put credentials in this file.
+bucket = ""
+key    = "lab2/task1/dev/terraform.tfstate"
+region = "us-east-1"

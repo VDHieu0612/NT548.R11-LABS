@@ -1,0 +1,114 @@
+[
+  {
+    "id": "EX-001",
+    "check_id": "CKV_AWS_126",
+    "resource": "aws_instance.public_ec2",
+    "reason": "Basic monitoring preserves the Lab 1 cost baseline.",
+    "mitigation": "Keep basic metrics; enable detailed monitoring before production use."
+  },
+  {
+    "id": "EX-002",
+    "check_id": "CKV_AWS_135",
+    "resource": "aws_instance.public_ec2",
+    "reason": "The baseline t2.micro does not support EBS optimization.",
+    "mitigation": "Encrypted root disk; reassess when changing instance type."
+  },
+  {
+    "id": "EX-003",
+    "check_id": "CKV_AWS_88",
+    "resource": "aws_instance.public_ec2",
+    "reason": "Public Bastion is required by Lab 1.",
+    "mitigation": "SSH IPv4 /32 only; IMDSv2 required and encrypted root disk."
+  },
+  {
+    "id": "EX-004",
+    "check_id": "CKV2_AWS_41",
+    "resource": "aws_instance.public_ec2",
+    "reason": "No AWS API workload requires an instance role; IAM rights are unverified.",
+    "mitigation": "No credentials in user_data or disk; add least privilege role only for a real API workload."
+  },
+  {
+    "id": "EX-005",
+    "check_id": "CKV_AWS_126",
+    "resource": "aws_instance.private_ec2",
+    "reason": "Basic monitoring preserves the Lab 1 cost baseline.",
+    "mitigation": "Basic metrics remain; private ingress only from Bastion SG."
+  },
+  {
+    "id": "EX-006",
+    "check_id": "CKV_AWS_135",
+    "resource": "aws_instance.private_ec2",
+    "reason": "Preserve the t2.micro baseline.",
+    "mitigation": "Encrypted root disk; review instance type before production."
+  },
+  {
+    "id": "EX-007",
+    "check_id": "CKV2_AWS_41",
+    "resource": "aws_instance.private_ec2",
+    "reason": "This lab instance does not call AWS APIs.",
+    "mitigation": "Do not install credentials; IMDSv2 is required."
+  },
+  {
+    "id": "EX-008",
+    "check_id": "CKV_AWS_382",
+    "resource": "aws_security_group.public_ec2_sg",
+    "reason": "Preserve Lab 1 all-egress behavior.",
+    "mitigation": "Inbound SSH IPv4 /32; restrict egress if workload requirements become known."
+  },
+  {
+    "id": "EX-009",
+    "check_id": "CKV2_AWS_5",
+    "resource": "aws_security_group.public_ec2_sg",
+    "reason": "Checkov 3.4.11 cross-module graph finding despite explicit Root SG-to-EC2 references.",
+    "mitigation": "Terraform validation plus source wiring inspection; verify attachments after live deployment."
+  },
+  {
+    "id": "EX-010",
+    "check_id": "CKV_AWS_382",
+    "resource": "aws_security_group.private_ec2_sg",
+    "reason": "Preserve Lab 1 private outbound connectivity through NAT.",
+    "mitigation": "Private ingress only from Public SG; no public IP; restrict egress for production."
+  },
+  {
+    "id": "EX-011",
+    "check_id": "CKV2_AWS_5",
+    "resource": "aws_security_group.private_ec2_sg",
+    "reason": "Checkov 3.4.11 cross-module graph finding despite explicit Root references.",
+    "mitigation": "Verify SG attachment on the private instance during AWS acceptance."
+  },
+  {
+    "id": "EX-012",
+    "check_id": "CKV2_AWS_11",
+    "resource": "aws_vpc.main",
+    "reason": "Flow Logs would add logging and IAM resources outside Lab 1 topology.",
+    "mitigation": "Record this observability limitation; enable Flow Logs for production with a reviewed design."
+  },
+  {
+    "id": "EX-013",
+    "check_id": "CKV2_AWS_62",
+    "resource": "aws_s3_bucket.state",
+    "reason": "State locking does not require event notifications.",
+    "mitigation": "Use native S3 lockfile and enable versioning."
+  },
+  {
+    "id": "EX-014",
+    "check_id": "CKV_AWS_18",
+    "resource": "aws_s3_bucket.state",
+    "reason": "A separate access-log bucket is outside this minimal bootstrap.",
+    "mitigation": "Block Public Access, TLS-only bucket policy and version history; access audit remains a limitation."
+  },
+  {
+    "id": "EX-015",
+    "check_id": "CKV_AWS_144",
+    "resource": "aws_s3_bucket.state",
+    "reason": "Cross-region replication adds a second bucket and IAM permissions.",
+    "mitigation": "Versioning is enabled; noncurrent versions retained 90 days; no cross-region disaster recovery claim."
+  },
+  {
+    "id": "EX-016",
+    "check_id": "CKV_AWS_145",
+    "resource": "aws_s3_bucket.state",
+    "reason": "SSE-S3 avoids requiring unverified KMS permissions in Learner Lab.",
+    "mitigation": "AES256, TLS, restricted bucket/object IAM; review KMS if permissions are available."
+  }
+]

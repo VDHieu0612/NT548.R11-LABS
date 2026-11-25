@@ -1,0 +1,27 @@
+# Local tools, reports and project memory
+.tools/
+.cache/
+.artifacts/
+.context/
+__pycache__/
+.pytest_cache/
+
+# Terraform runtime data and deployment inputs
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.tfplan.json
+plan.json
+backend.hcl
+*.backend.hcl
+*.tfvars
+*.tfvars.json
+!*.tfvars.example
+!*.backend.hcl.example
+.env
+.env.*
+
+# Local credentials and keys
+*.pem
+*.key

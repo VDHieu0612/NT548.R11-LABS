@@ -1,5 +1,7 @@
 # 1. Security Group cho Public EC2 (Bastion Host)
 resource "aws_security_group" "public_ec2_sg" {
+  #checkov:skip=CKV_AWS_382:EX-008 Preserve Lab 1 outbound rules; inbound SSH stays limited to the configured /32.
+  #checkov:skip=CKV2_AWS_5:EX-009 Cross-module graph finding; Root passes this SG output to module.ec2.vpc_security_group_ids.
   name        = "${var.project_name}-public-ec2-sg"
   description = "Allow SSH inbound traffic from specific user IP only"
   vpc_id      = var.vpc_id
@@ -29,6 +31,8 @@ resource "aws_security_group" "public_ec2_sg" {
 
 # 2. Security Group cho Private EC2
 resource "aws_security_group" "private_ec2_sg" {
+  #checkov:skip=CKV_AWS_382:EX-010 Preserve Lab 1 NAT outbound testing; private ingress remains Bastion-SG-only.
+  #checkov:skip=CKV2_AWS_5:EX-011 Cross-module graph finding; Root passes this SG output to the private EC2.
   name        = "${var.project_name}-private-ec2-sg"
   description = "Allow SSH and ICMP only from Public EC2 Security Group"
   vpc_id      = var.vpc_id

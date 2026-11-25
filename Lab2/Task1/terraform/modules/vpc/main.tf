@@ -6,6 +6,7 @@
 
 # 1. Tạo Virtual Private Cloud (VPC)
 resource "aws_vpc" "main" {
+  #checkov:skip=CKV2_AWS_11:EX-012 Flow Logs require extra logging/IAM resources beyond the preserved Lab 1 topology.
   cidr_block           = var.vpc_cidr
   enable_dns_support   = true
   enable_dns_hostnames = true
@@ -26,10 +27,11 @@ resource "aws_internet_gateway" "main" {
 
 # 3. Tạo Public Subnet (dành cho Bastion Host & NAT Gateway)
 resource "aws_subnet" "public" {
-  vpc_id                  = aws_vpc.main.id
-  cidr_block              = var.public_subnet_cidr
-  availability_zone       = var.availability_zone
-  map_public_ip_on_launch = true
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = var.public_subnet_cidr
+  availability_zone = var.availability_zone
+  # Bastion explicitly requests its Public IP; unrelated instances get none by default.
+  map_public_ip_on_launch = false
 
   tags = merge(var.tags, {
     Name = "${var.project_name}-public-subnet"
@@ -54,19 +56,9 @@ resource "aws_subnet" "private" {
 resource "aws_default_security_group" "default" {
   vpc_id = aws_vpc.main.id
 
-  ingress {
-    protocol  = -1
-    self      = true
-    from_port = 0
-    to_port   = 0
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
+  # EC2 instances use dedicated SGs; keep the unused Default SG closed.
+  ingress = []
+  egress  = []
 
   tags = merge(var.tags, {
     Name = "${var.project_name}-default-sg"
