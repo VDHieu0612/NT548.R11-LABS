@@ -1,6 +1,8 @@
 const express = require('express');
 
 const app = express();
+// Khong tiet lo framework qua header "X-Powered-By: Express" (SonarQube rule S5689)
+app.disable('x-powered-by');
 app.use(express.json());
 
 // Root endpoint
