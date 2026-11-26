@@ -52,34 +52,31 @@
 
 ---
 
-## 📂 CẤU TRÚC THƯ MỤC DỰ ÁN
+## 📂 CẤU TRÚC THƯ MỤC LAB 1
 
 ```text
-.
-├── .github/
-│   └── PULL_REQUEST_TEMPLATE.md         # Template tạo PR chuẩn quy trình Git Flow
+Lab1/
 ├── terraform/                           # Triển khai bằng Terraform (Module hóa)
 │   ├── environments/
 │   │   └── dev/
-│   │       ├── main.tf                  # Root module gọi các submodules
-│   │       ├── variables.tf             # Input variables
-│   │       ├── outputs.tf               # Outputs (IPs, Subnet IDs, VPC ID)
+│   │       ├── main.tf                  # Root module ghép nối 4 submodules
+│   │       ├── variables.tf             # Khai báo biến đầu vào
+│   │       ├── outputs.tf               # Xuất thông tin tài nguyên (IPs, VPC ID, Subnet IDs)
 │   │       ├── providers.tf             # Cấu hình AWS provider
-│   │       └── terraform.tfvars.example # File mẫu cấu hình biến
+│   │       └── terraform.tfvars.example # File mẫu giá trị cấu hình thực tế
 │   └── modules/
-│       ├── vpc/                         # Module VPC, Subnets, IGW, Default SG
-│       ├── nat/                         # Module NAT Gateway, EIP, Route Tables
-│       ├── security/                    # Module Security Groups
-│       └── ec2/                         # Module EC2 Instances & Key Pair
+│       ├── vpc/                         # Module VPC, Public/Private Subnets, IGW, Default SG
+│       ├── nat/                         # Module NAT Gateway, Elastic IP, Route Tables
+│       ├── security/                    # Module Security Groups (Public Bastion & Private EC2)
+│       └── ec2/                         # Module EC2 Instances (Amazon Linux 2023 AMI, Key Pair)
 ├── cloudformation/                      # Triển khai bằng CloudFormation Templates
-│   ├── master.yaml                      # Template Master điều phối (Nested Stacks)
-│   ├── 01-vpc-network.yaml              # VPC, Subnet, IGW, NAT GW, Route Tables
-│   ├── 02-security-groups.yaml          # Security Groups cho Public/Private
-│   └── 03-ec2-instances.yaml            # EC2 instances, UserData
+│   ├── master.yaml                      # Template Master điều phối Nested Stacks
+│   ├── 01-vpc-network.yaml              # VPC, Subnets, IGW, NAT GW, Route Tables
+│   ├── 02-security-groups.yaml          # Security Groups cho Public & Private EC2
+│   └── 03-ec2-instances.yaml            # Khởi tạo EC2 Instances & gắn Security Groups
 ├── scripts/
-│   └── test_connectivity.sh             # Script kiểm thử kết nối tự động
-├── .gitignore                           # Loại bỏ file nhạy cảm (.tfstate, *.pem, v.v.)
-└── README.md
+│   └── test_connectivity.sh             # Script Bash tự động kiểm thử kết nối 6 kịch bản (TC01-TC06)
+└── README.md                            # Hướng dẫn chi tiết triển khai Lab 1
 ```
 
 ---
